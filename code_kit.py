@@ -343,3 +343,70 @@ grouped_mean = df.groupby('그룹칼럼')['값을 볼 칼럼'].mean()
 #여러 통계량 동시 계산
 grouped_agg = df.groupby(['그룹1,'그룹2'])['값을 볼 칼럼'].sum()
 
+#사용자 정의 함수 적용
+custom_func = df.groupby('그룹칼럼')['값을 볼 칼럼'].apply(lambda x:x.max() - x.min())
+
+################### 상관관계 계산 #########################
+#  상관계수 행렬 계산
+correlation_matrix = df.corr()
+print(correlation_matrix)
+
+#상관관계 히트맵 생성
+plt.figure(figsize=(10,8))
+sns.heatmap(correlation_matrix, annot=True, cmap='coolwarm', center=0, square=True, fmt='.2f')
+plt.title('상관관계 히트맵')
+plt.show()
+
+################## 정규성 검정 ##########################
+#shaprio-wilk 검정: 표본이 정규분포를 따르는지 검정(소표본에 적합)
+shaprio_stat, shapiro_p = stats.shapiro(data)
+print(f"Shapiro-Wilk: 통계량={shapiro_stat:.4f}, p-value={shapiro_p:.4f}")
+
+#kolmogorov-smirnov 검정: 표본분포와 이론적 분포 차이를 검정
+ks_stat, ks_p = stats.kstest(data, 'norm', args=(data,mean(), data.std()))
+print(f"Kolmogorov-Smirnov: 통계량={ks_stat:.4f}, p-value={ks_p:.4f}")
+
+# anderson-darling 검정: 정규성 검정
+ad_stat, ad_critical, ad_significance = stats.anderson(data, dist='norm')
+print(f"Anderson-Darling: 통계량={ad_stat:.4f}")
+
+
+print(f"임계값 (유의수준): {dict(zip(ad_significance, ad_critical))}")
+
+# 코호트 분석
+# 여러 개 코호트 출력시 사용
+def cohort(a, b, c, d, list1, list2, max):
+  fig, axs = plt.subplots(a, b, figsize=(c, d))
+  for i in range(len(list1)):
+    grouping = list2[i].groupby(['최초거래월', '경과월'])
+    cohort_data = grouping['고객ID'].apply(pd.Series.nunique)
+    cohort_data = cohort_data.reset_index()
+    cohort_counts = cohort_data.pivot(index='최초거래월',columns='경과월',values='고객ID')
+    cohort_size = cohort_counts.iloc[:,0]
+    retention = cohort_counts.divide(cohort_size,axis=0)
+
+    axs[i].set_title(list1[i])
+    ax = sns.heatmap(data=retention, annot=True, fmt='.0%', vmin=0.0, vmax=max, cmap="Blues", ax=axs[i])
+    ax.set_yticklabels([f'{int(label.get_text())}월' for label in ax.get_yticklabels()], rotation=0)
+    ax.set_xlabel('경과월(개월 후)')
+    ax.set_ylabel('2019년 최초거래월')
+  plt.tight_layout()
+  plt.show()
+
+# 하나 코호트 출력시 사용
+def cohort_one(title, DF, max):
+  grouping = DF.groupby(['최초거래월', '경과월'])
+  cohort_data = grouping['고객ID'].apply(pd.Series.nunique)
+  cohort_data = cohort_data.reset_index()
+  cohort_counts = cohort_data.pivot(index='최초거래월',columns='경과월',values='고객ID')
+  cohort_size = cohort_counts.iloc[:,0]
+  retention = cohort_counts.divide(cohort_size,axis=0)
+
+  plt.figure(figsize=(9, 6))
+  plt.title(title)
+  ax = sns.heatmap(data=retention, annot=True, fmt='.0%', vmin=0.0, vmax=max, cmap='Blues')
+  ax.set_yticklabels([f'{int(label.get_text())}월' for label in ax.get_yticklabels()], rotation=0)
+  ax.set_xlabel('경과월(개월 후)')
+  ax.set_ylabel('2019년 최초거래월')
+  plt.show()
+  
